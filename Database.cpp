@@ -1,22 +1,32 @@
 #include "Database.h"
 
-Database::Database(string path)
+
+Database::Database():mPath(""), mOpenFlag(false), mOk(true)
+{}
+
+Database::Database(string path):mPath(path)
 {
     if(sqlite3_open(path.c_str(), &mDb) != SQLITE_OK){
-        cout << "open database<" << path << "> fail!";
+        mOpenFlag = false;
+        mOk = false;
         return ;
-    }else
-    {
-        cout << "database open ok" << endl;
     }
-    
+    mOpenFlag = true;
+    mOk = true;
 }
+
+
+Database::~Database()
+{
+    sqlite3_close(mDb);
+}
+
 /**
  * function: int query(string query, list<tuple<Type,int,string, double>>&data)
  * 
  * description: 
  **/
-int Database::query(string query, list<tuple<Type,int,string,double>>&data)
+int Database::query(string query, COLUMN_LIST&data)
 {
     sqlite3_stmt *stmt;
     char *errMsg;
@@ -25,7 +35,7 @@ int Database::query(string query, list<tuple<Type,int,string,double>>&data)
     
     ret = sqlite3_prepare_v2(mDb,query.c_str(), query.size(), &stmt, 0);
     if(ret != SQLITE_OK){
-        cout << "prepare " + query + " fail!";
+        mOk = false;
         return -1;
     }
 
@@ -38,21 +48,21 @@ int Database::query(string query, list<tuple<Type,int,string,double>>&data)
             for(int i=0; i<cnt; i++)
             {
                 string type = sqlite3_column_decltype(stmt, i);
-                if(type.compare("integer") == 0 || type.compare("INTEGER") == 0){
-                    data.push_back(makeTuple(sqlite3_column_int(stmt,i)));
+                if(type.find("int") != string::npos || type.find("INT") != string::npos){
+                    data.push_back(toSqlDataType(sqlite3_column_int(stmt,i)));
                 }
-                else if(type.compare("text") == 0 || type.compare("TEXT") == 0){
-                    data.push_back(makeTuple(string((char *)sqlite3_column_text(stmt,i))));
+                else if(type.find("char") != string::npos || type.find("CHAR") != string::npos ||
+                        type.find("TEXT") != string::npos || type.find("text") != string::npos){
+                    data.push_back(toSqlDataType(string((char*)sqlite3_column_text(stmt,i))));
                 }
-                else if(type.compare("float") == 0 || type.compare("FLOAT") == 0){
-                    data.push_back(makeTuple(sqlite3_column_double(stmt,i)));
+                else if(type.compare("float") == 0 || type.compare("FLOAT") == 0 ||
+                        type.compare("double") == 0 || type.compare("DOUBLE") == 0 || 
+                        type.compare("real") == 0 || type.compare("REAL") == 0){
+                    data.push_back(toSqlDataType(sqlite3_column_double(stmt,i)));
                 }
-                else if(type.compare("double") == 0 || type.compare("DOUBLE") == 0){
-                    data.push_back(makeTuple(sqlite3_column_double(stmt,i)));
-                    cout << get<3>(data.back()) << endl;
-                }
-                else if(type.compare("datetime") == 0 || type.compare("DATETIME") == 0){
-                    data.push_back(makeTuple((char *)sqlite3_column_text(stmt,i)));
+                else if(type.compare("datetime") == 0 || type.compare("DATETIME") == 0 || 
+                        type.compare("date") == 0 || type.compare("DATE") == 0){
+                    data.push_back(toSqlDataType((char *)sqlite3_column_text(stmt,i)));
                 }
             }
         }
@@ -70,11 +80,11 @@ int Database::query(string query, list<tuple<Type,int,string,double>>&data)
             case Type::Text:
                 sqlite3_bind_text(stmt, index++, get<2>(item).c_str(), get<2>(item).size(), 0);
                 break;
-            case Type::Double:
+            case Type::Real:
                 sqlite3_bind_double(stmt, index++, get<3>(item));
                 break;
             default:
-                cout << "unknow Type:" << get<0>(item) << endl;
+            mOk = false;
                 break;
             } 
         }
@@ -94,14 +104,14 @@ int Database::query(string query, list<tuple<Type,int,string,double>>&data)
 
 
 /**
- *  function: list<list<tuple<Database::Type,int,string,double>>> query(const char* _args...)
+ *  function: list<list<SQL_DATA_TYPE>> query(const char* _args...)
  * 
  *  description: 
  */
-list<list<tuple<Database::Type,int,string,double>>> Database::query(const char* _args...)
+ROW_LIST Database::query(const char* _args...)
 {
     string query = "";
-    list<tuple<Database::Type, int, string, double>>data;
+    COLUMN_LIST data;
 
     va_list args;
     va_start(args, _args);
@@ -110,63 +120,119 @@ list<list<tuple<Database::Type,int,string,double>>> Database::query(const char* 
 	{
         if (*_args == 'q') 
             query = va_arg(args, char*);
-		else if (*_args == 'd') 
+		else if (*_args == 'i') 
 		{
-            int d = va_arg(args, int);
-            data.push_back(makeTuple(d));
+            int i = va_arg(args, int);
+            data.push_back(toSqlDataType(i));
         } 
-		else if (*_args == 'f')
+        else if (*_args == 'd')
 		{
             double d = va_arg(args, double);
-            std::cout << d << '\n';
+            data.push_back(toSqlDataType(d));
         }
 		else if(*_args == 's')
 		{
 			string s = va_arg(args, char*);
-            data.push_back(makeTuple(s));
+            data.push_back(toSqlDataType(s));
 		}
         ++_args;
     }
     va_end(args);
 
-    list<list<tuple<Database::Type,int,string,double>>>ret;
-    list<tuple<Database::Type,int,string,double>>tmp;
+    ROW_LIST ret;
+    COLUMN_LIST tmp;
     int columnNum = this->query(query, data);
-    
     if(columnNum != 0) {
         int inc = data.size()/columnNum;
         int index = 0;
         for(auto& item:data){
-
             tmp.push_back(item);
-            if(index == inc){
+            index++;
+            if(index == columnNum){
                 ret.push_back(tmp);
                 tmp.clear();
-                index = -1;
+                index = 0;
             }
-            index++;
         }
     }
     return ret;
 }
 
+bool Database::open()
+{
+    if (mPath.size() == 0){
+        mPath = "";
+        mOpenFlag = false;
+        mOk = false;
+        return false;
+    }
+    if(sqlite3_open(mPath.c_str(), &mDb) != SQLITE_OK){
+        mOpenFlag = false;
+        mOk = false;
+        return false;
+    }
+    mOpenFlag = true;
+    mOk = true;
+    return true;
+}
+bool Database::close()
+{
+    if(sqlite3_close(mDb) == SQLITE_OK){
+        mOk = true;
+        return true;
+    }
+    mOk = false;
+    return false;
+}
+bool Database::open(string _path)
+{
+    mPath = _path;
 
-tuple<Database::Type,int,string,double> Database::makeTuple(int value)
+    return open();
+}
+bool Database::isOpen() const
+{
+    return mOpenFlag;
+}
+bool Database::isOk()
+{
+    bool tmp = mOk;
+    mOk = true;
+    return tmp;
+}
+void Database::setPath(string _path)
+{
+    mPath = _path;
+}
+
+SQL_DATA_TYPE Database::toSqlDataType(int value)
 {
     return make_tuple(Database::Type::Integer, value, "", 0.0);
 }
-
-tuple<Database::Type,int,string,double> Database::makeTuple(string value)
+SQL_DATA_TYPE Database::toSqlDataType(string value)
 {
     return make_tuple(Database::Type::Text, 0, value, 0.0);
 }
-
-tuple<Database::Type,int,string,double> Database::makeTuple(double value)
+SQL_DATA_TYPE Database::toSqlDataType(double value)
 {
-    return make_tuple(Database::Type::Double, 0, "", value);
+    return make_tuple(Database::Type::Real, 0, "", value);
 }
 
-Database::~Database()
+string Database::toString(SQL_DATA_TYPE _data)
 {
-    sqlite3_close(mDb);
+    if(get<0>(_data) == Database::Text)
+        return get<2>(_data);
+    return "";
+}
+double Database::toDouble(SQL_DATA_TYPE _data)
+{
+    if(get<0>(_data) == Database::Real)
+        return get<3>(_data);
+    return 0;
+}
+int Database::toInt(SQL_DATA_TYPE _data)
+{
+    if(get<0>(_data) == Database::Integer)
+        return get<1>(_data);
+    return 0;
 }
