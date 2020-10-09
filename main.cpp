@@ -1,129 +1,85 @@
 #include <iostream>
-#include "Database.h"
+#include "Sqlite.h"
 #include <chrono>
+
+
 using namespace std;
 
 int main(int argc, char **argv)
 {
 	Database::Sqlite db;
 	db.open("./test.db");
-	// Database db("/home/linux/Desktop/test/sql/test.db");
-	/* 
-	// use query and values to handle database
-	list<tuple<Database::Type, int, string>>data;
 	
-	// test insert
-	// string query = "insert into Test2(Data, Num, Str) values(?, ?, ?);";
-	// data.push_back(db.toSqlDataType("what the hell?"));
-	// data.push_back(db.toSqlDataType(888));
-	// data.push_back(db.toSqlDataType("bey"));
-	
-	// test select
-	// string query = "select * from Test2;";
-	
-	// test delete
-	// string query = "delete from Test2 where ID=3;";
-	
-	// test update
-	string query = "update Test2 set Num=?, Str=? where ID=4;";
-	data.push_back(db.toSqlDataType(999));
-	data.push_back(db.toSqlDataType("888"));
+	// int a;
+	// short b;
+	// long c;
+	// long long d;
+	// string e = "da";
+	// char f;
+	// char g[10];
+	// float h;
+	// double i;
 
+	// cout << typeid(a).name() << endl;
+	// cout << typeid(b).name() << endl;
+	// cout << typeid(c).name() << endl;
+	// cout << typeid(d).name() << endl;
+	// cout << typeid(e).name() << endl;
+	// cout << typeid(f).name() << endl;
+	// cout << typeid(g).name() << endl;
+	// cout << typeid(h).name() << endl;
+	// cout << typeid(i).name() << endl;
 
-	db.query(query, data);
+/*
+chrono::system_clock::time_point tStart1 = chrono::system_clock::now();
+	int ret = db.prepare("insert into Test(num,str,num2) values(?,?,?);");
+	if (ret != 0)
+		cout << "prepare fail" << endl;
+	int data = 12;
+	string str = "asdfasd";
+	double num = 12.123123;
 
-	for(auto& item:data)
-		(get<0>(item) == Database::Type::Integer)?(cout << get<1>(item) << endl):(cout << get<2>(item) << endl);
-	*/
+	ret = db.bind(data);
+	if(ret != 0)
+		cout << db.lastError().errMsg << endl;
 
-	// /*
-	// use variable element function to handle database
-	// ROW_LIST data = db.query("q", "select name from sqlite_master where type='table';");
-	// int data = db.exec("create table Application(ID integer primary key autoincrement, num int);");
-	// if(data == -1)
-	// 	cout << db.getErrorMessage() << endl;
-	// */
+	ret = db.bind(str);
+	if(ret != 0)
+		cout << db.lastError().errMsg << endl;
 
-	// db.query("q", "create table Test(num int, str text, num2 real);");
-	// if(!db.isOk())
-	// 	cout << db.getErrorMessage() << endl;
-	// db.exec("insert into Test(num, str, num2) values(3, '3', 3.3);insert into Test(num, str, num2) values(4, '4', 4.4);");
-	// if(!db.isOk())
-	// 	cout << db.getErrorMessage() << endl;
-	// ROW_LIST rl = db.query("q", "select * from Test;");
-	// if(!db.isOk())
-	// 	cout << db.getErrorMessage() << endl;
-	// try {
-	// 		for(auto& cl:rl){
-	// 		cout << Database::toDouble(Database::at(cl, 4)) << endl;;
-	// 	}
-	// }
-	// catch (const std::exception& e){
-	// 	cout << e.what() << endl;
-	// }
+	ret = db.bind(num);
+	if(ret != 0)
+		cout << db.lastError().errMsg << endl;
 
-	// list<string> values = db.getColumnName("Test");
-	// for (auto& i:values)
-	// {
-	// 	cout << i << endl;
-	// }
+	ret = db.bind_finish();
+	if(ret != 0)
+		cout << "err" << endl;
+chrono::system_clock::time_point tEnd1 = chrono::system_clock::now();
 
-	// list<string> values2 = db.getColumnName("AA");
-	// for (auto& i:values2)
-	// {
-	// 	cout << i << endl;
-	// }
+cout << "elapse: " << chrono::duration_cast<chrono::microseconds>(tEnd1-tStart1).count() << endl;
 
-	// list<string> values3 = db.getColumnName("Fault");
-	// for (auto& i:values3)
-	// {
-	// 	cout << i << endl;
-	// }
+chrono::system_clock::time_point tStart2 = chrono::system_clock::now();
+	ret = db.exec("insert into Test(num,str,num2) values(123,'asdfasdf', 123123.12312);");
+	if (ret != 0)
+		cout << "err " << endl;
+chrono::system_clock::time_point tEnd2 = chrono::system_clock::now();
 
-	chrono::system_clock::time_point tStart1 = chrono::system_clock::now();
-	ROW_LIST rl; 
-	db.query("q", "select * from Test;");
-	if(!db.isOk())
-		cout << db.getErrorMessage() << endl;
-	chrono::system_clock::time_point tEnd1 = chrono::system_clock::now();
-	cout << "elapse: " << chrono::duration_cast<chrono::microseconds>(tEnd1-tStart1).count() << endl;
-	// for(auto& i:at(rl, 0)){
-	// 	Database::Type type = get<0>(i);
-	// 	if(type == Database::Integer)
-	// 		cout << Database::toInt(i) << endl;
-	// 	else if(type == Database::Text)
-	// 		cout << Database::toString(i) << endl;
-	// 	else if(type == Database::Real)
-	// 		cout << Database::toDouble(i) << endl;
-	// }
-	list<list<string>> values5 = db.getRowValues();
-	for (auto& cl:values5)
-	{
-		for(auto& i:cl)
-			cout << i  << "|";
-		cout << "\n";
-	}
-	
-	
-	
-	cout << "\n\n";
+cout << "elapse: " << chrono::duration_cast<chrono::microseconds>(tEnd2-tStart2).count() << endl;
+*/
+chrono::system_clock::time_point tStart3 = chrono::system_clock::now();
+	db.prepare("select * from Test;");
+	db.getQuerys();
+chrono::system_clock::time_point tEnd3 = chrono::system_clock::now();
 
-	chrono::system_clock::time_point tStart = chrono::system_clock::now();
+cout << "elapse: " << chrono::duration_cast<chrono::microseconds>(tEnd3-tStart3).count() << endl;
+
+chrono::system_clock::time_point tStart4 = chrono::system_clock::now();
 	db.exec("select * from Test;");
-	if(!db.isOk())
-		cout << db.getErrorMessage() << endl;
+	db.getQuerys();
+chrono::system_clock::time_point tEnd4 = chrono::system_clock::now();
 
-	chrono::system_clock::time_point tEnd = chrono::system_clock::now();
-	cout << "elapse: " << chrono::duration_cast<chrono::microseconds>(tEnd-tStart).count() << endl;
+cout << "elapse: " << chrono::duration_cast<chrono::microseconds>(tEnd4-tStart4).count() << endl;
 
-
-	list<string> values4 = db.getColumnValues(0);
-	for (auto& i:values4)
-	{
-		cout << i << endl;
-	}
-	
-	
 	return 0;
 }
 

@@ -4,7 +4,7 @@ LIBS	= `pkg-config --libs sqlite3`
 
 TARGET	= sqliteTest
 
-OBJS	= main.cpp Database.cpp
+OBJS	= main.cpp Database.cpp Sqlite.cpp
 
 $(TARGET):$(OBJS)
 	$(CXX)  $^ -o $@ $(LIBS) $(CFLAGS)
