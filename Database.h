@@ -22,6 +22,8 @@
 #define PREPARE_ERR 1000
 #define BIND_ERR    1001
 #define EXEC_ERR    1002
+#define OPEN_ERR    1003
+#define PATH_ERR    1004
 
 using namespace std;
 

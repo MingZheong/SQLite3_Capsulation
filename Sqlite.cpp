@@ -8,13 +8,13 @@ static int callback(void *NotUsed, int argc, char **argv, char **azColName){
 
     query q;
     for(int i=0; i<argc; i++){
-        printf("%s = %s\n", azColName[i], argv[i] ? argv[i] : "NULL");
+        // printf("%s = %s\n", azColName[i], argv[i] ? argv[i] : "NULL");
         pair<string,string> p(azColName[i], argv[i]);
         q.insert(p);
         
     }
     gResult.push_back(q);
-    printf("\n");
+    // printf("\n");
     return 0;
 }
 
@@ -54,12 +54,20 @@ Sqlite::~Sqlite()
 */
 bool Sqlite::open()
 {
-    if (mPath.size() == 0){
-        mPath = "";
+    if(!mOpenFlag){
+        mErr.errCode = OPEN_ERR;
+        mErr.errMsg = "databse has been opened";
+        return false;
+    }
+    if(mPath.size() == 0){
+        mErr.errCode = OPEN_ERR;
+        mErr.errMsg = "databse peth not exist";
         mOpenFlag = false;
         return false;
     }
     if(sqlite3_open(mPath.c_str(), &mDb) != SQLITE_OK){
+        mErr.errCode = OPEN_ERR;
+        mErr.errMsg = sqlite3_errmsg(mDb);
         mOpenFlag = false;
         return false;
     }
@@ -83,10 +91,10 @@ bool Sqlite::open(string _path)
 bool Sqlite::close()
 {
     if(sqlite3_close(mDb) == SQLITE_OK){
+        mOpenFlag = false;
         return true;
     }
 
-    mOpenFlag = false;
     return false;
 }
 
@@ -109,10 +117,17 @@ void Sqlite::setPath(string _path)
 
 /************************************* use exec ****************************************/
 
+
+/**
+ * 
+*/
 int Sqlite::exec(string query)
 {
-    if(isOpen() == false)
+    if(!mOpenFlag){
+        mErr.errCode = OPEN_ERR;
+        mErr.errMsg = "databse is closed";
         return -1;
+    }
 
     int ret = 0;
 
@@ -144,18 +159,25 @@ int Sqlite::exec(string query)
 */
 int Sqlite::prepare(string query)
 {
-    if (!mOpenFlag)
+    if(!mOpenFlag){
+        mErr.errCode = OPEN_ERR;
+        mErr.errMsg = "databse is closed";
         return -1;
-    mDbMutex.lock();
-    int ret = sqlite3_prepare_v2(mDb, query.c_str(), query.size(), &mStmt, 0);
-    if(ret != SQLITE_OK){
-        mDbMutex.unlock();
-        mPrepare = false;
-        return -2;
     }
-    mStmtIndex = 1;
+
+    mDbMutex.lock();
     mPrepare = true;
 
+    int ret = sqlite3_prepare_v2(mDb, query.c_str(), query.size(), &mStmt, 0);
+    if(ret != SQLITE_OK){
+        mErr.errCode = PREPARE_ERR;
+        mErr.errMsg = sqlite3_errmsg(mDb);
+        mPrepare = false;
+        mDbMutex.unlock();
+        return PREPARE_ERR;
+    }
+    mStmtIndex = 1;
+    
     return 0;
 }
 
@@ -164,6 +186,9 @@ int Sqlite::prepare(string query)
 */
 int Sqlite::bind(int value)
 {
+    if(!mPrepare)
+        return PREPARE_ERR;
+
     int ret = sqlite3_bind_int(mStmt, mStmtIndex++, value);
     if(ret != SQLITE_OK)
     {
@@ -181,15 +206,14 @@ int Sqlite::bind(int value)
  * 
 */
 int Sqlite::bind(short value){
+    if(!mPrepare)
+        return PREPARE_ERR;
 
     int ret = sqlite3_bind_int(mStmt, mStmtIndex++, value);
     if(ret != SQLITE_OK)
     {
         mErr.errCode = BIND_ERR;
         mErr.errMsg = sqlite3_errmsg(mDb);
-        // sqlite3_clear_bindings(mStmt);
-        // sqlite3_finalize(mStmt);
-        // mDbMutex.unlock();
         return BIND_ERR;
     }
     return ret;
@@ -200,15 +224,14 @@ int Sqlite::bind(short value){
  * 
 */
 int Sqlite::bind(long value){
+    if(!mPrepare)
+        return PREPARE_ERR;
 
     int ret = sqlite3_bind_int64(mStmt, mStmtIndex++, value);
     if(ret != SQLITE_OK)
     {
         mErr.errCode = BIND_ERR;
         mErr.errMsg = sqlite3_errmsg(mDb);
-        // sqlite3_clear_bindings(mStmt);
-        // sqlite3_finalize(mStmt);
-        // mDbMutex.unlock();
         return BIND_ERR;
     }
     return ret;
@@ -218,15 +241,14 @@ int Sqlite::bind(long value){
  * 
 */
 int Sqlite::bind(long long value){
+    if(!mPrepare)
+        return PREPARE_ERR;
 
     int ret = sqlite3_bind_int64(mStmt, mStmtIndex++, value);
     if(ret != SQLITE_OK)
     {
         mErr.errCode = BIND_ERR;
         mErr.errMsg = sqlite3_errmsg(mDb);
-        // sqlite3_clear_bindings(mStmt);
-        // sqlite3_finalize(mStmt);
-        // mDbMutex.unlock();
         return BIND_ERR;
     }
     return ret;
@@ -236,15 +258,14 @@ int Sqlite::bind(long long value){
  * 
 */
 int Sqlite::bind(float value){
+    if(!mPrepare)
+        return PREPARE_ERR;
    
     int ret = sqlite3_bind_double(mStmt, mStmtIndex++, value);
     if(ret != SQLITE_OK)
     {
         mErr.errCode = BIND_ERR;
         mErr.errMsg = sqlite3_errmsg(mDb);
-        // sqlite3_clear_bindings(mStmt);
-        // sqlite3_finalize(mStmt);
-        // mDbMutex.unlock();
         return BIND_ERR;
     }
     return ret;
@@ -254,15 +275,14 @@ int Sqlite::bind(float value){
  * 
 */
 int Sqlite::bind(double value){
+    if(!mPrepare)
+        return PREPARE_ERR;
 
     int ret = sqlite3_bind_double(mStmt, mStmtIndex++, value);
     if(ret != SQLITE_OK)
     {
         mErr.errCode = BIND_ERR;
         mErr.errMsg = sqlite3_errmsg(mDb);
-        // sqlite3_clear_bindings(mStmt);
-        // sqlite3_finalize(mStmt);
-        // mDbMutex.unlock();
         return BIND_ERR;
     }
     return ret;
@@ -272,15 +292,14 @@ int Sqlite::bind(double value){
  * 
 */
 int Sqlite::bind(char* value){
+    if(!mPrepare)
+        return PREPARE_ERR;
 
     int ret = sqlite3_bind_text(mStmt, mStmtIndex++, value, strlen(value), 0);
     if(ret != SQLITE_OK)
     {
         mErr.errCode = BIND_ERR;
         mErr.errMsg = sqlite3_errmsg(mDb);
-        // sqlite3_clear_bindings(mStmt);
-        // sqlite3_finalize(mStmt);
-        // mDbMutex.unlock();
         return BIND_ERR;
     }
     return ret;
@@ -290,15 +309,14 @@ int Sqlite::bind(char* value){
  * 
 */
 int Sqlite::bind(string value){
+    if(!mPrepare)
+        return PREPARE_ERR;
 
     int ret = sqlite3_bind_text(mStmt, mStmtIndex++, value.c_str(), value.size(), 0);
     if(ret != SQLITE_OK)
     {
         mErr.errCode = BIND_ERR;
         mErr.errMsg = sqlite3_errmsg(mDb);
-        // sqlite3_clear_bindings(mStmt);
-        // sqlite3_finalize(mStmt);
-        // mDbMutex.unlock();
         return BIND_ERR;
     }
     return ret;
@@ -308,15 +326,14 @@ int Sqlite::bind(string value){
  * 
 */
 int Sqlite::bind(void* value, int size){
+    if(!mPrepare)
+        return PREPARE_ERR;
 
     int ret = sqlite3_bind_blob(mStmt, mStmtIndex++, value, size, 0);
     if(ret != SQLITE_OK)
     {
         mErr.errCode = BIND_ERR;
         mErr.errMsg = sqlite3_errmsg(mDb);
-        // sqlite3_clear_bindings(mStmt);
-        // sqlite3_finalize(mStmt);
-        // mDbMutex.unlock();
         return BIND_ERR;
     }
     return ret;
@@ -326,6 +343,8 @@ int Sqlite::bind(void* value, int size){
  * 
 */
 int Sqlite::binds(const char* fmt...){
+    if(!mPrepare)
+        return PREPARE_ERR;
     
     return 0;
 }
@@ -333,8 +352,10 @@ int Sqlite::binds(const char* fmt...){
 /**
  * 
 */
-int Sqlite::bind_finish()
-{
+int Sqlite::bind_finish(){
+    if(!mPrepare)
+        return PREPARE_ERR;
+
     mPrepare = false;
 
     if(mErr.errCode == BIND_ERR){
@@ -368,7 +389,6 @@ querys Sqlite::getQuerys()
     while(sqlite3_step(mStmt) == SQLITE_ROW)
     {
         uint cnt = sqlite3_column_count(mStmt);
-        cout << "-----" << cnt << "-----" << endl;
         query values;
         for(int i=0; i<cnt; i++)
         {
@@ -377,13 +397,10 @@ querys Sqlite::getQuerys()
             // get column name
             string type = sqlite3_column_decltype(mStmt, i);
             p.first = sqlite3_column_name(mStmt, i);
-            cout << "column name: " << p.first << " ";
             
             // get all values as a string
             sqlite3_value *v = sqlite3_column_value(mStmt, i);
             p.second = (char*)(sqlite3_value_text(v));
-            cout << "value: " << p.second << " ";
-            cout << "type: " << sqlite3_value_type(v) << endl;
 
             values.insert(p);
         }

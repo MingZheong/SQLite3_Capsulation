@@ -30,9 +30,9 @@ int main(int argc, char **argv)
 	// cout << typeid(h).name() << endl;
 	// cout << typeid(i).name() << endl;
 
-/*
+
 chrono::system_clock::time_point tStart1 = chrono::system_clock::now();
-	int ret = db.prepare("insert into Test(num,str,num2) values(?,?,?);");
+	int ret = db.prepare("insert into Test(num,stdr,num2) values(?,?,?);");
 	if (ret != 0)
 		cout << "prepare fail" << endl;
 	int data = 12;
@@ -65,7 +65,7 @@ chrono::system_clock::time_point tStart2 = chrono::system_clock::now();
 chrono::system_clock::time_point tEnd2 = chrono::system_clock::now();
 
 cout << "elapse: " << chrono::duration_cast<chrono::microseconds>(tEnd2-tStart2).count() << endl;
-*/
+
 chrono::system_clock::time_point tStart3 = chrono::system_clock::now();
 	db.prepare("select * from Test;");
 	db.getQuerys();
