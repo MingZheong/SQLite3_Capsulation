@@ -1,7 +1,5 @@
 /**
  *  A capsulation of sqlite3.
- *  
- *  Support types: Integer, Int, Real, Float, Boolean, Date, Character, VarChar, Real, Text
  * 
  *  author: Zhang Ming
  * 
@@ -27,9 +25,6 @@ namespace Database{
 
 typedef map<string,string> query;
 typedef list<map<string,string>> querys;
-
-enum Type{Integer, Text, Real};
-
 
 struct SQLError{
     int errCode;
@@ -74,7 +69,7 @@ public:
 private:
     sqlite3* mDb;
     string mPath;
-    mutex mDbMutex, mResultMutex;
+    mutex mDbMutex;
     bool mOpenFlag;
     
     sqlite3_stmt *mStmt;

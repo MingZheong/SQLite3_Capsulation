@@ -4,6 +4,10 @@ namespace Database{
 
 static querys gResult;
 
+
+/**
+ * callback function
+*/
 static int callback(void *NotUsed, int argc, char **argv, char **azColName){
 
     query q;
@@ -129,13 +133,11 @@ int Sqlite::exec(string query)
         return -1;
     }
 
-    int ret = 0;
-
     mDbMutex.lock();
 
     char *errMsg = nullptr;
     gResult.clear();
-    ret = sqlite3_exec(mDb, query.c_str(), callback, 0, &errMsg);
+    int ret = sqlite3_exec(mDb, query.c_str(), callback, 0, &errMsg);
     if (ret != SQLITE_OK){
         mErr.errCode = EXEC_ERR;
         mErr.errMsg = sqlite3_errmsg(mDb);
@@ -357,15 +359,6 @@ int Sqlite::bind_finish(){
         return PREPARE_ERR;
 
     mPrepare = false;
-
-    if(mErr.errCode == BIND_ERR){
-        mErr.errCode = 0;
-        mErr.errMsg = "";
-        sqlite3_clear_bindings(mStmt);
-        sqlite3_finalize(mStmt);
-        mDbMutex.unlock();
-        return -1;
-    }
 
     sqlite3_step(mStmt);
     sqlite3_reset(mStmt);
